@@ -22,14 +22,21 @@ h1{margin:0;font-size:28px;font-weight:600;letter-spacing:-.02em}
 p{margin:-12px 0 0;font-size:15px;opacity:0;transition:opacity .4s}
 p.on{opacity:.75}
 a{color:#fff}
+.btns{display:none;gap:12px;margin-top:-12px}
+.btn{padding:10px 20px;border-radius:99px;background:#fff;color:#000;text-decoration:none;font-size:15px;font-weight:500;transition:opacity .15s}
+.btn:hover{opacity:.85}
 </style>
 </head>
 <body>
 <div class="s">
 <svg viewBox="-165 -165 330 330" id="rot"><path id="sh"/></svg>
-<svg class="sp" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"/></svg>
+<svg class="sp" id="sp" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"/></svg>
 </div>
 <h1 id="t">Downloading Riff</h1>
+<div id="c" class="btns">
+<a class="btn" id="b1" href="https://github.com/rootscripts/riff/releases/latest">Apple Silicon</a>
+<a class="btn" id="b2" href="https://github.com/rootscripts/riff/releases/latest">Intel</a>
+</div>
 <p id="f"><span id="m">Download not started?</span> <a id="l" href="https://github.com/rootscripts/riff/releases/latest">Click here</a></p>
 <noscript><a href="https://github.com/rootscripts/riff/releases/latest">Download Riff</a></noscript>
 <script>
@@ -142,22 +149,30 @@ a{color:#fff}
 </script>
 <script>
 (function () {
+  var ua = navigator.userAgent;
+  var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  if (/android|iphone|ipad|ipod|mobile/i.test(ua) || (/Mac/i.test(p) && navigator.maxTouchPoints > 1) || (navigator.userAgentData && navigator.userAgentData.mobile)) {
+    location.replace('https://rootless.shit.vc/fork');
+    return;
+  }
+
   var REPO = 'rootscripts/riff';
   var RELEASES = 'https://github.com/' + REPO + '/releases/latest';
   var TYPES = { win: /\.exe$/i, linux: /\.appimage$/i, mac: /\.dmg$/i };
+  var t = document.getElementById('t');
   var f = document.getElementById('f');
   var l = document.getElementById('l');
-
-  setTimeout(function () { f.className = 'on'; }, 5000);
+  var c = document.getElementById('c');
+  var b1 = document.getElementById('b1');
+  var b2 = document.getElementById('b2');
+  var sp = document.getElementById('sp');
 
   function detectOS() {
-    var ua = navigator.userAgent;
-    var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
-    if (/android/i.test(ua)) return 'android';
-    if (/iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(p) && navigator.maxTouchPoints > 1)) return 'ios';
-    if (/Win/i.test(p) || /Windows/i.test(ua)) return 'win';
-    if (/Mac/i.test(p)) return 'mac';
-    if (/Linux|X11|CrOS/i.test(p + ua)) return 'linux';
+    var u = navigator.userAgent;
+    var pl = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    if (/Win/i.test(pl) || /Windows/i.test(u)) return 'win';
+    if (/Mac/i.test(pl)) return 'mac';
+    if (/Linux|X11|CrOS/i.test(pl + u)) return 'linux';
     return 'other';
   }
 
@@ -170,16 +185,6 @@ a{color:#fff}
       } catch (e) {}
     }
     if (/aarch64|arm64|armv8/i.test(navigator.userAgent)) return 'arm64';
-    if (os === 'mac') {
-      try {
-        var g = document.createElement('canvas').getContext('webgl');
-        var x = g && g.getExtension('WEBGL_debug_renderer_info');
-        var r = x ? String(g.getParameter(x.UNMASKED_RENDERER_WEBGL)) : '';
-        if (/Apple/i.test(r)) return 'arm64';
-        if (/Intel|AMD|Radeon|NVIDIA/i.test(r)) return 'x64';
-      } catch (e) {}
-      return 'arm64';
-    }
     return 'x64';
   }
 
@@ -187,9 +192,10 @@ a{color:#fff}
     if (!TYPES[os].test(name)) return -1000;
     var s = 0;
     var arm = /arm64|aarch64/i.test(name);
+    var intel = /x64|x86_64|amd64|intel/i.test(name);
     var x86 = /ia32|i386|i686|x86(?!_)/i.test(name);
-    if (arch === 'arm64') s += arm ? 5 : 0;
-    else s += arm ? -5 : (x86 ? -3 : 1);
+    if (arch === 'arm64') s += arm ? 5 : (intel ? -5 : 0);
+    else s += arm ? -5 : (intel ? 5 : (x86 ? -3 : 1));
     if (os === 'win') {
       if (/setup|install/i.test(name)) s += 2;
       if (/portable/i.test(name)) s -= 2;
@@ -206,13 +212,56 @@ a{color:#fff}
     return best;
   }
 
+  function startDownload(url) {
+    l.href = url;
+    location.href = url;
+    setTimeout(function () { f.className = 'on'; }, 5000);
+    setTimeout(function () { window.close(); }, 1500);
+  }
+
+  function chooseMac(url) {
+    t.textContent = 'Downloading Riff';
+    c.style.display = 'none';
+    sp.style.display = '';
+    startDownload(url);
+  }
+
+  b1.onclick = function (e) {
+    e.preventDefault();
+    chooseMac(this.href);
+  };
+  b2.onclick = function (e) {
+    e.preventDefault();
+    chooseMac(this.href);
+  };
+
   async function run() {
     var os = detectOS();
     if (!TYPES[os]) {
-      document.getElementById('t').textContent = 'Riff is for Windows, macOS and Linux';
+      t.textContent = 'Riff is for Windows, macOS and Linux';
       document.getElementById('m').textContent = '';
       l.textContent = 'Open releases';
       f.className = 'on';
+      return;
+    }
+    if (os === 'mac') {
+      t.textContent = 'Choose your Mac';
+      var armUrl = RELEASES, intelUrl = RELEASES;
+      try {
+        var r = await fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+        if (r.ok) {
+          var j = await r.json();
+          var assets = j.assets || [];
+          var aArm = pick(assets, 'mac', 'arm64');
+          var aIntel = pick(assets, 'mac', 'x64');
+          if (aArm) armUrl = aArm.browser_download_url;
+          if (aIntel) intelUrl = aIntel.browser_download_url;
+        }
+      } catch (e) {}
+      b1.href = armUrl;
+      b2.href = intelUrl;
+      sp.style.display = 'none';
+      c.style.display = 'flex';
       return;
     }
     var arch = await detectArch(os);
@@ -226,9 +275,7 @@ a{color:#fff}
       }
     } catch (e) {}
     if (!url) { location.replace(RELEASES); return; }
-    l.href = url;
-    location.href = url;
-    setTimeout(function () { window.close(); }, 1500);
+    startDownload(url);
   }
 
   var S = window.RiffShapes;
